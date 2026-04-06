@@ -7,13 +7,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f5;color:#222;min-height:100vh}
+body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#222;min-height:100vh}
 .login-container{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
 .login-box{background:white;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:400px;width:100%}
 .login-box h1{margin-bottom:30px;font-size:28px;text-align:center}
 .form-group{margin-bottom:20px}
 .form-group label{display:block;margin-bottom:8px;font-weight:500;font-size:14px}
-.form-group input{width:100%;padding:12px;border:1px solid #ddd;border-radius:6px;font-size:14px}
+.form-group input,.form-group select{width:100%;padding:12px;border:1px solid #ddd;border-radius:6px;font-size:14px}
 .form-group input:focus{outline:none;border-color:#01696f}
 .btn{width:100%;padding:12px;background:#01696f;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;font-weight:500}
 .btn:hover{background:#0c4e54}
@@ -58,198 +58,208 @@ th,td{padding:12px;text-align:left;border-bottom:1px solid #eee}
 th{background:#f8f9fa;font-weight:600;font-size:14px}
 td{font-size:14px}
 tr:hover{background:#f8f9fa}
+.btn-sm{padding:6px 12px;font-size:12px}
 </style>
 </head>
 <body>
-
 <!-- Login Screen -->
-<div class="login-container" id="loginScreen">
-  <div class="login-box">
-    <h1>Mitarbeiterverwaltung</h1>
-    <div id="loginForm">
-      <div class="form-group">
-        abel>E-Mail</label>
-        <input type="email" id="loginEmail" placeholder="deine@email.de">
-      </div>
-      <div class="form-group">
-        abel>Passwort</label>
-        <input type="password" id="loginPassword" placeholder="••••••••">
-      </div>
-      <button class="btn" onclick="login()">Anmelden</button>
-      <button class="btn btn-secondary" onclick="showRegister()">Registrieren</button>
-      <div id="loginError" class="error"></div>
-    </div>
-    <div id="registerForm" style="display:none">
-      <div class="form-group">
-        abel>E-Mail</label>
-        <input type="email" id="registerEmail" placeholder="deine@email.de">
-      </div>
-      <div class="form-group">
-        abel>Passwort</label>
-        <input type="password" id="registerPassword" placeholder="••••••••">
-      </div>
-      <button class="btn" onclick="register()">Konto erstellen</button>
-      <button class="btn btn-secondary" onclick="showLogin()">Zurück zum Login</button>
-      <div id="registerError" class="error"></div>
-      <div id="registerSuccess" class="success"></div>
-    </div>
-  </div>
+<div class="login-container" id="loginScreen" style="display:flex">
+<div class="login-box">
+<h1>🏢 Mitarbeiterverwaltung</h1>
+<div id="loginForm">
+<div class="form-group">
+<label>E-Mail</label>
+<input type="email" id="loginEmail" placeholder="deine@email.de">
 </div>
-
+<div class="form-group">
+<label>Passwort</label>
+<input type="password" id="loginPassword" placeholder="••••••••">
+</div>
+<button class="btn" onclick="login()">Anmelden</button>
+<button class="btn btn-secondary" onclick="showRegister()">Registrieren</button>
+<div id="loginError" class="error"></div>
+</div>
+<div id="registerForm" style="display:none">
+<div class="form-group">
+<label>E-Mail</label>
+<input type="email" id="registerEmail" placeholder="deine@email.de">
+</div>
+<div class="form-group">
+<label>Passwort</label>
+<input type="password" id="registerPassword" placeholder="••••••••">
+</div>
+<button class="btn" onclick="register()">Konto erstellen</button>
+<button class="btn btn-secondary" onclick="showLogin()">Zurück zum Login</button>
+<div id="registerError" class="error"></div>
+<div id="registerSuccess" class="success"></div>
+</div>
+</div>
+</div>
 <!-- App -->
 <div class="app" id="app">
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h2>Team Manager</h2>
-      <p id="userEmail"></p>
-    </div>
-    <nav>
-      <a href="#" class="nav-item active" data-view="liste" onclick="showView('liste')">📋 Mitarbeiter</a>
-      <a href="#" class="nav-item" data-view="dashboard" onclick="showView('dashboard')">📊 Dashboard</a>
-      <a href="#" class="nav-item" data-view="stunden" onclick="showView('stunden')">⏱️ Stundenbuch</a>
-      <a href="#" class="nav-item" data-view="einsaetze" onclick="showView('einsaetze')">🏗️ Einsatzplanung</a>
-      <a href="#" class="nav-item" data-view="qualifikationen" onclick="showView('qualifikationen')">✅ Qualifikationen</a>
-    </nav>
-  </aside>
-  
-  <main class="main">
-    <div class="topbar">
-      <h1 id="viewTitle">Alle Mitarbeiter</h1>
-      <button class="btn-logout" onclick="logout()">Abmelden</button>
-    </div>
-    
-    <!-- Mitarbeiter Liste -->
-    <div class="view active" id="view-liste">
-      <button class="btn-primary" onclick="openModal()" style="margin-bottom:20px">+ Mitarbeiter hinzufügen</button>
-      <div class="grid" id="employeeGrid"></div>
-    </div>
-    
-    <!-- Dashboard -->
-    <div class="view" id="view-dashboard">
-      <div class="grid" id="statsGrid"></div>
-    </div>
-    
-    <!-- Stundenbuch -->
-    <div class="view" id="view-stunden">
-      <div class="card" style="margin-bottom:20px">
-        <div class="form-row">
-          <div class="form-group">
-            abel>Mitarbeiter</label>
-            <select id="h-mitarbeiter" class="form-group input"></select>
-          </div>
-          <div class="form-group">
-            abel>Datum</label>
-            <input type="date" id="h-datum" class="form-group input">
-          </div>
-          <div class="form-group">
-            abel>Stunden</label>
-            <input type="number" id="h-stunden" step="0.5" class="form-group input">
-          </div>
-        </div>
-        <button class="btn-primary" onclick="addHourEntry()" style="margin-top:10px">Eintragen</button>
-      </div>
-      <table id="hoursTable">
-        <thead><tr><th>Mitarbeiter</th><th>Datum</th><th>Stunden</th><th>Aktion</th></tr></thead>
-        <tbody id="hoursTableBody"></tbody>
-      </table>
-    </div>
-    
-    <!-- Einsatzplanung -->
-    <div class="view" id="view-einsaetze">
-      <div class="card" style="margin-bottom:20px">
-        <div class="form-row">
-          <div class="form-group">
-            abel>Baustelle</label>
-            <input type="text" id="e-baustelle" class="form-group input">
-          </div>
-          <div class="form-group">
-            abel>Datum</label>
-            <input type="date" id="e-datum" class="form-group input">
-          </div>
-          <div class="form-group">
-            abel>Mitarbeiter</label>
-            <select id="e-mitarbeiter" class="form-group input"></select>
-          </div>
-        </div>
-        <button class="btn-primary" onclick="addEinsatz()" style="margin-top:10px">Planen</button>
-      </div>
-      <table>
-        <thead><tr><th>Baustelle</th><th>Datum</th><th>Mitarbeiter</th><th>Aktion</th></tr></thead>
-        <tbody id="einsatzTableBody"></tbody>
-      </table>
-    </div>
-    
-    <!-- Qualifikationen -->
-    <div class="view" id="view-qualifikationen">
-      <table>
-        <thead><tr><th>Mitarbeiter</th><th>Abteilung</th><th>FIT fällig</th></tr></thead>
-        <tbody id="qualificationList"></tbody>
-      </table>
-    </div>
-  </main>
+<aside class="sidebar">
+<div class="sidebar-header">
+<h2>Team Manager</h2>
+<p id="userEmail"></p>
 </div>
-
+<nav>
+<a href="#" class="nav-item active" onclick="showView('liste')">📋 Mitarbeiter</a>
+<a href="#" class="nav-item" onclick="showView('stunden')">⏱️ Stundenbuch</a>
+</nav>
+</aside>
+<main class="main">
+<div class="topbar">
+<h1 id="viewTitle">Alle Mitarbeiter</h1>
+<button class="btn-logout" onclick="logout()">Abmelden</button>
+</div>
+<div class="view active" id="view-liste">
+<button class="btn-primary" onclick="openModal()" style="margin-bottom:20px">+ Mitarbeiter hinzufügen</button>
+<div class="grid" id="employeeGrid"></div>
+</div>
+<div class="view" id="view-stunden">
+<div class="card" style="margin-bottom:20px">
+<div class="form-row">
+<div class="form-group">
+<label>Mitarbeiter</label>
+<select id="h-mitarbeiter"></select>
+</div>
+<div class="form-group">
+<label>Datum</label>
+<input type="date" id="h-datum">
+</div>
+<div class="form-group">
+<label>Stunden</label>
+<input type="number" id="h-stunden" step="0.5">
+</div>
+</div>
+<button class="btn-primary" onclick="addHourEntry()" style="margin-top:10px">Eintragen</button>
+</div>
+<table>
+<thead><tr><th>Mitarbeiter</th><th>Datum</th><th>Stunden</th><th>Aktion</th></tr></thead>
+<tbody id="hoursTableBody"></tbody>
+</table>
+</div>
+</main>
+</div>
 <!-- Modal -->
 <div class="modal" id="modal">
-  <div class="modal-content">
-    <h2 id="modalTitle">Neuer Mitarbeiter</h2>
-    <div class="form-group">
-      abel>Vorname *</label>
-      <input type="text" id="f-vorname">
-    </div>
-    <div class="form-group">
-      abel>Nachname *</label>
-      <input type="text" id="f-nachname">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        abel>Status</label>
-        <select id="f-status">
-          <option>Aktiv</option>
-          <option>Krank</option>
-          <option>Urlaub</option>
-          <option>Inaktiv</option>
-        </select>
-      </div>
-      <div class="form-group">
-        abel>Abteilung</label>
-        <select id="f-abteilung">
-          <option>Gleissicherung</option>
-          <option>Fahrdienst</option>
-          <option>Büro</option>
-          <option>Leitung</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        abel>Telefon</label>
-        <input type="tel" id="f-telefon">
-      </div>
-      <div class="form-group">
-        abel>E-Mail</label>
-        <input type="email" id="f-email">
-      </div>
-    </div>
-    <div class="form-group">
-      abel>ELBA ID</label>
-      <input type="text" id="f-elbaid">
-    </div>
-    <div class="form-group">
-      abel>FIT-Schulung fällig am</label>
-      <input type="date" id="f-fitfaellig">
-    </div>
-    <div class="btn-group">
-      <button class="btn-primary" onclick="saveEmployee()">Speichern</button>
-      <button class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
-    </div>
-  </div>
+<div class="modal-content">
+<h2 id="modalTitle">Neuer Mitarbeiter</h2>
+<div class="form-group">
+<label>Vorname *</label>
+<input type="text" id="f-vorname">
 </div>
-
+<div class="form-group">
+<label>Nachname *</label>
+<input type="text" id="f-nachname">
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Status</label>
+<select id="f-status">
+<option>Aktiv</option>
+<option>Krank</option>
+<option>Urlaub</option>
+</select>
+</div>
+<div class="form-group">
+<label>Abteilung</label>
+<select id="f-abteilung">
+<option>Gleissicherung</option>
+<option>Fahrdienst</option>
+<option>Büro</option>
+<option>Leitung</option>
+</select>
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Telefon</label>
+<input type="tel" id="f-telefon">
+</div>
+<div class="form-group">
+<label>E-Mail</label>
+<input type="email" id="f-email">
+</div>
+</div>
+<div class="form-group">
+<label>ELBA ID</label>
+<input type="text" id="f-elbaid">
+</div>
+<div class="btn-group">
+<button class="btn-primary" onclick="saveEmployee()">Speichern</button>
+<button class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
+</div>
+</div>
+</div>
 <script>
-const SUPABASE_URL = 'https://xgpozkqwgaqmlcwfvvxm.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhncG96a3F3Z2FxbWxjd2Z2dnhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5NjQyNTIsImV4cCI6MjA1OTU0MDI1Mn0.aLfEUo6bOayVL8FGHnCdjE_7Zu9Q8bUl0dHQTRdSAaA';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let currentUser = null;
-let editingId = null;
+const SUPABASE_URL='https://xgpozkqwgaqmlcwfvvxm.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhncG96a3F3Z2FxbWxjd2Z2dnhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5NjQyNTIsImV4cCI6MjA1OTU0MDI1Mn0.aLfEUo6bOayVL8FGHnCdjE_7Zu9Q8bUl0dHQTRdSAaA';
+const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let currentUser=null,editingId=null;
+async function init(){
+const{data:{user}}=await supabase.auth.getUser();
+if(user){currentUser=user;showApp()}else{document.getElementById('loginScreen').style.display='flex'}}
+async function login(){
+const email=document.getElementById('loginEmail').value,password=document.getElementById('loginPassword').value;
+const{data,error}=await supabase.auth.signInWithPassword({email,password});
+if(error){document.getElementById('loginError').textContent=error.message}else{currentUser=data.user;showApp()}}
+async function register(){
+const email=document.getElementById('registerEmail').value,password=document.getElementById('registerPassword').value;
+const{error}=await supabase.auth.signUp({email,password});
+if(error){document.getElementById('registerError').textContent=error.message}else{document.getElementById('registerSuccess').textContent='Konto erstellt! Prüfe deine E-Mails.';setTimeout(showLogin,2000)}}
+function showLogin(){document.getElementById('loginForm').style.display='block';document.getElementById('registerForm').style.display='none'}
+function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='block'}
+function showApp(){document.getElementById('loginScreen').style.display='none';document.getElementById('app').classList.add('active');document.getElementById('userEmail').textContent=currentUser.email;loadEmployees();loadHours()}
+async function logout(){await supabase.auth.signOut();location.reload()}
+async function loadEmployees(){
+const{data}=await supabase.from('employees').select('*').eq('user_id',currentUser.id);
+const grid=document.getElementById('employeeGrid');
+if(!data||data.length===0){grid.innerHTML='<div class="empty">Noch keine Mitarbeiter angelegt</div>';return}
+grid.innerHTML=data.map(e=>`<div class="card"><h3>${e.vorname} ${e.nachname}</h3><p><span class="badge badge-${(e.status||'aktiv').toLowerCase()}">${e.status||'Aktiv'}</span></p><p>📧 ${e.email||'-'}</p><p>📞 ${e.telefon||'-'}</p><p>🏢 ${e.abteilung||'-'}</p><p>🆔 ${e.elbaid||'-'}</p><button class="btn-primary btn-sm" onclick="editEmployee('${e.id}')" style="margin-top:10px">Bearbeiten</button></div>`).join('')}
+function openModal(){editingId=null;document.getElementById('modalTitle').textContent='Neuer Mitarbeiter';document.getElementById('f-vorname').value='';document.getElementById('f-nachname').value='';document.getElementById('f-status').value='Aktiv';document.getElementById('f-abteilung').value='Gleissicherung';document.getElementById('f-telefon').value='';document.getElementById('f-email').value='';document.getElementById('f-elbaid').value='';document.getElementById('modal').classList.add('active')}
+function closeModal(){document.getElementById('modal').classList.remove('active')}
+async function editEmployee(id){
+editingId=id;
+const{data}=await supabase.from('employees').select('*').eq('id',id).single();
+if(!data)return;
+document.getElementById('modalTitle').textContent='Mitarbeiter bearbeiten';
+document.getElementById('f-vorname').value=data.vorname||'';
+document.getElementById('f-nachname').value=data.nachname||'';
+document.getElementById('f-status').value=data.status||'Aktiv';
+document.getElementById('f-abteilung').value=data.abteilung||'Gleissicherung';
+document.getElementById('f-telefon').value=data.telefon||'';
+document.getElementById('f-email').value=data.email||'';
+document.getElementById('f-elbaid').value=data.elbaid||'';
+document.getElementById('modal').classList.add('active')}
+async function saveEmployee(){
+const data={vorname:document.getElementById('f-vorname').value,nachname:document.getElementById('f-nachname').value,status:document.getElementById('f-status').value,abteilung:document.getElementById('f-abteilung').value,telefon:document.getElementById('f-telefon').value,email:document.getElementById('f-email').value,elbaid:document.getElementById('f-elbaid').value,user_id:currentUser.id};
+if(!data.vorname||!data.nachname){alert('Bitte Vorname und Nachname ausfüllen');return}
+if(editingId){await supabase.from('employees').update(data).eq('id',editingId)}else{await supabase.from('employees').insert([data])}
+closeModal();loadEmployees()}
+function showView(view){
+document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+document.getElementById('view-'+view).classList.add('active');
+document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+event.target.classList.add('active');
+const titles={'liste':'Alle Mitarbeiter','stunden':'Stundenbuch'};
+document.getElementById('viewTitle').textContent=titles[view]||'Mitarbeiterverwaltung';
+if(view==='stunden')loadHours()}
+async function loadHours(){
+const{data:employees}=await supabase.from('employees').select('id,vorname,nachname').eq('user_id',currentUser.id);
+const sel=document.getElementById('h-mitarbeiter');
+sel.innerHTML=employees?.map(e=>`<option value="${e.id}">${e.vorname} ${e.nachname}</option>`).join('')||'';
+const{data:hours}=await supabase.from('hours').select('*,employees(vorname,nachname)').eq('user_id',currentUser.id).order('datum',{ascending:false});
+const tbody=document.getElementById('hoursTableBody');
+if(!hours||hours.length===0){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#999">Noch keine Stunden eingetragen</td></tr>';return}
+tbody.innerHTML=hours.map(h=>`<tr><td>${h.employees?.vorname} ${h.employees?.nachname}</td><td>${h.datum}</td><td>${h.stunden}h</td><td><button class="btn-sm" onclick="deleteHour('${h.id}')">Löschen</button></td></tr>`).join('')}
+async function addHourEntry(){
+const data={mitarbeiter_id:document.getElementById('h-mitarbeiter').value,datum:document.getElementById('h-datum').value,stunden:parseFloat(document.getElementById('h-stunden').value),user_id:currentUser.id};
+if(!data.mitarbeiter_id||!data.datum||!data.stunden){alert('Bitte alle Felder ausfüllen');return}
+await supabase.from('hours').insert([data]);
+document.getElementById('h-datum').value='';document.getElementById('h-stunden').value='';loadHours()}
+async function deleteHour(id){if(!confirm('Wirklich löschen?'))return;await supabase.from('hours').delete().eq('id',id);loadHours()}
+init();
+</script>
+</body>
+</html>
