@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mitarbeiterverwaltung</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#222;min-height:100vh}
@@ -13,8 +14,11 @@ body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#222;min-height:1
 .login-box h1{margin-bottom:30px;font-size:28px;text-align:center}
 .form-group{margin-bottom:20px}
 .form-group label{display:block;margin-bottom:8px;font-weight:500;font-size:14px}
-.form-group input,.form-group select{width:100%;padding:12px;border:1px solid #ddd;border-radius:6px;font-size:14px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:6px;font-size:14px}
 .form-group input:focus{outline:none;border-color:#01696f}
+.checkbox-group{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.checkbox-label{display:flex;align-items:center;gap:8px;font-size:14px}
+.checkbox-label input{width:auto}
 .btn{width:100%;padding:12px;background:#01696f;color:white;border:none;border-radius:6px;font-size:16px;cursor:pointer;font-weight:500}
 .btn:hover{background:#0c4e54}
 .btn-secondary{background:#6c757d;margin-top:10px}
@@ -32,6 +36,7 @@ body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#222;min-height:1
 .main{margin-left:250px;padding:30px;min-height:100vh}
 .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
 .topbar h1{font-size:28px}
+.topbar-actions{display:flex;gap:10px}
 .btn-logout{padding:10px 20px;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer}
 .btn-logout:hover{background:#c82333}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
@@ -45,20 +50,25 @@ body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#222;min-height:1
 .empty{text-align:center;padding:60px 20px;color:#999}
 .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:1000}
 .modal.active{display:flex}
-.modal-content{background:white;padding:30px;border-radius:12px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto}
+.modal-content{background:white;padding:30px;border-radius:12px;max-width:700px;width:90%;max-height:90vh;overflow-y:auto}
 .modal-content h2{margin-bottom:20px}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .btn-group{display:flex;gap:10px;margin-top:20px}
-.badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:500}
+.badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:500;margin-right:5px}
 .badge-aktiv{background:#d4dfcc;color:#437a22}
 .badge-krank{background:#ddcfc6;color:#964219}
 .badge-urlaub{background:#e9e0c6;color:#d19900}
+.badge-warning{background:#fff3cd;color:#856404}
+.badge-danger{background:#f8d7da;color:#721c24}
 table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden}
 th,td{padding:12px;text-align:left;border-bottom:1px solid #eee}
 th{background:#f8f9fa;font-weight:600;font-size:14px}
 td{font-size:14px}
 tr:hover{background:#f8f9fa}
 .btn-sm{padding:6px 12px;font-size:12px}
+.qual-item{background:#f8f9fa;padding:10px;border-radius:6px;margin-bottom:10px}
+.qual-item h4{font-size:14px;margin-bottom:5px}
+.qual-item p{font-size:12px;color:#666}
 </style>
 </head>
 <body>
@@ -105,17 +115,25 @@ tr:hover{background:#f8f9fa}
 <nav>
 <a href="#" class="nav-item active" onclick="showView('liste')">📋 Mitarbeiter</a>
 <a href="#" class="nav-item" onclick="showView('stunden')">⏱️ Stundenbuch</a>
+<a href="#" class="nav-item" onclick="showView('qualifikationen')">🎓 Qualifikationen</a>
+<a href="#" class="nav-item" onclick="showView('baustellen')">🏭 Baustellen</a>
+<a href="#" class="nav-item" onclick="showView('dokumente')">📄 Dokumente</a>
 </nav>
 </aside>
 <main class="main">
 <div class="topbar">
 <h1 id="viewTitle">Alle Mitarbeiter</h1>
+<div class="topbar-actions">
+<button class="btn-primary" onclick="exportToExcel()" id="exportBtn" style="display:none">📄 Excel Export</button>
 <button class="btn-logout" onclick="logout()">Abmelden</button>
 </div>
+</div>
+<!-- View: Mitarbeiter Liste -->
 <div class="view active" id="view-liste">
 <button class="btn-primary" onclick="openModal()" style="margin-bottom:20px">+ Mitarbeiter hinzufügen</button>
 <div class="grid" id="employeeGrid"></div>
 </div>
+<!-- View: Stundenbuch -->
 <div class="view" id="view-stunden">
 <div class="card" style="margin-bottom:20px">
 <div class="form-row">
@@ -135,13 +153,35 @@ tr:hover{background:#f8f9fa}
 <button class="btn-primary" onclick="addHourEntry()" style="margin-top:10px">Eintragen</button>
 </div>
 <table>
-<thead><tr><th>Mitarbeiter</th><th>Datum</th><th>Stunden</th><th>Aktion</th></tr></thead>
+<thead>
+<tr>
+<th>Mitarbeiter</th>
+<th>Datum</th>
+<th>Stunden</th>
+<th>Aktion</th>
+</tr>
+</thead>
 <tbody id="hoursTableBody"></tbody>
 </table>
 </div>
+<!-- View: Qualifikationen -->
+<div class="view" id="view-qualifikationen">
+<button class="btn-primary" onclick="openQualModal()" style="margin-bottom:20px">+ Qualifikation hinzufügen</button>
+<div id="qualGrid" class="grid"></div>
+</div>
+<!-- View: Baustellen -->
+<div class="view" id="view-baustellen">
+<button class="btn-primary" onclick="openBaustelleModal()" style="margin-bottom:20px">+ Baustelle hinzufügen</button>
+<div class="grid" id="baustellenGrid"></div>
+</div>
+<!-- View: Dokumente -->
+<div class="view" id="view-dokumente">
+<button class="btn-primary" onclick="openDokumentModal()" style="margin-bottom:20px">+ Dokument hinzufügen</button>
+<div class="grid" id="dokumenteGrid"></div>
+</div>
 </main>
 </div>
-<!-- Modal -->
+<!-- Modal: Mitarbeiter -->
 <div class="modal" id="modal">
 <div class="modal-content">
 <h2 id="modalTitle">Neuer Mitarbeiter</h2>
@@ -192,14 +232,124 @@ tr:hover{background:#f8f9fa}
 </div>
 </div>
 </div>
+<!-- Modal: Qualifikation -->
+<div class="modal" id="qualModal">
+<div class="modal-content">
+<h2>Qualifikation hinzufügen</h2>
+<div class="form-group">
+<label>Mitarbeiter *</label>
+<select id="q-mitarbeiter"></select>
+</div>
+<div class="form-group">
+<label>Qualifikationen</label>
+<div class="checkbox-group">
+<label class="checkbox-label"><input type="checkbox" id="q-sakra"> SAKRA</label>
+<label class="checkbox-label"><input type="checkbox" id="q-sipo"> SIPO</label>
+<label class="checkbox-label"><input type="checkbox" id="q-beb"> BeB</label>
+<label class="checkbox-label"><input type="checkbox" id="q-sas"> SaS</label>
+<label class="checkbox-label"><input type="checkbox" id="q-buep"> BÜP</label>
+<label class="checkbox-label"><input type="checkbox" id="q-hib"> HIB</label>
+<label class="checkbox-label"><input type="checkbox" id="q-bediener"> Bediener</label>
+<label class="checkbox-label"><input type="checkbox" id="q-monteur"> Monteur</label>
+</div>
+</div>
+<div class="form-group">
+<label>Ablaufdatum</label>
+<input type="date" id="q-ablauf">
+</div>
+<div class="form-group">
+<label>FIT-Schulung fällig</label>
+<input type="date" id="q-fit">
+</div>
+<div class="btn-group">
+<button class="btn-primary" onclick="saveQualifikation()">Speichern</button>
+<button class="btn btn-secondary" onclick="closeQualModal()">Abbrechen</button>
+</div>
+</div>
+</div>
+<!-- Modal: Baustelle -->
+<div class="modal" id="baustelleModal">
+<div class="modal-content">
+<h2>Baustelle hinzufügen</h2>
+<div class="form-group">
+<label>Baustellenname *</label>
+<input type="text" id="b-name">
+</div>
+<div class="form-group">
+<label>Ort</label>
+<input type="text" id="b-ort">
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Start</label>
+<input type="date" id="b-start">
+</div>
+<div class="form-group">
+<label>Ende</label>
+<input type="date" id="b-ende">
+</div>
+</div>
+<div class="form-group">
+<label>Zugewiesene Mitarbeiter</label>
+<div id="b-mitarbeiter-list" class="checkbox-group"></div>
+</div>
+<div class="form-group">
+<label>Notizen</label>
+<textarea id="b-notizen" rows="3"></textarea>
+</div>
+<div class="btn-group">
+<button class="btn-primary" onclick="saveBaustelle()">Speichern</button>
+<button class="btn btn-secondary" onclick="closeBaustelleModal()">Abbrechen</button>
+</div>
+</div>
+</div>
+<!-- Modal: Dokument -->
+<div class="modal" id="dokumentModal">
+<div class="modal-content">
+<h2>Dokument hinzufügen</h2>
+<div class="form-group">
+<label>Dokumentname *</label>
+<input type="text" id="d-name">
+</div>
+<div class="form-group">
+<label>Mitarbeiter</label>
+<select id="d-mitarbeiter">
+<option value="">Allgemein</option>
+</select>
+</div>
+<div class="form-group">
+<label>Typ</label>
+<select id="d-typ">
+<option>Zertifikat</option>
+<option>Vertrag</option>
+<option>Schulung</option>
+<option>Sonstiges</option>
+</select>
+</div>
+<div class="form-group">
+<label>URL / Link</label>
+<input type="text" id="d-url" placeholder="https://...">
+</div>
+<div class="form-group">
+<label>Gültig bis</label>
+<input type="date" id="d-gueltig">
+</div>
+<div class="btn-group">
+<button class="btn-primary" onclick="saveDokument()">Speichern</button>
+<button class="btn btn-secondary" onclick="closeDokumentModal()">Abbrechen</button>
+</div>
+</div>
+</div>
 <script>
 const SUPABASE_URL='https://xgpozkqwgaqmlcwfvvxm.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhncG96a3F3Z2FxbWxjd2Z2dnhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5NjQyNTIsImV4cCI6MjA1OTU0MDI1Mn0.aLfEUo6bOayVL8FGHnCdjE_7Zu9Q8bUl0dHQTRdSAaA';
 const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let currentUser=null,editingId=null;
+// Initialize
 async function init(){
 const{data:{user}}=await supabase.auth.getUser();
 if(user){currentUser=user;showApp()}else{document.getElementById('loginScreen').style.display='flex'}}
+// Auth Functions
 async function login(){
 const email=document.getElementById('loginEmail').value,password=document.getElementById('loginPassword').value;
 const{data,error}=await supabase.auth.signInWithPassword({email,password});
@@ -210,55 +360,73 @@ const{error}=await supabase.auth.signUp({email,password});
 if(error){document.getElementById('registerError').textContent=error.message}else{document.getElementById('registerSuccess').textContent='Konto erstellt! Prüfe deine E-Mails.';setTimeout(showLogin,2000)}}
 function showLogin(){document.getElementById('loginForm').style.display='block';document.getElementById('registerForm').style.display='none'}
 function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='block'}
-function showApp(){document.getElementById('loginScreen').style.display='none';document.getElementById('app').classList.add('active');document.getElementById('userEmail').textContent=currentUser.email;loadEmployees();loadHours()}
+function showApp(){document.getElementById('loginScreen').style.display='none';document.getElementById('app').classList.add('active');document.getElementById('userEmail').textContent=currentUser.email;loadEmployees();loadHours();document.getElementById('exportBtn').style.display='block'}
 async function logout(){await supabase.auth.signOut();location.reload()}
+// Employee Functions
 async function loadEmployees(){
 const{data}=await supabase.from('employees').select('*').eq('user_id',currentUser.id);
 const grid=document.getElementById('employeeGrid');
 if(!data||data.length===0){grid.innerHTML='<div class="empty">Noch keine Mitarbeiter angelegt</div>';return}
-grid.innerHTML=data.map(e=>`<div class="card"><h3>${e.vorname} ${e.nachname}</h3><p><span class="badge badge-${(e.status||'aktiv').toLowerCase()}">${e.status||'Aktiv'}</span></p><p>📧 ${e.email||'-'}</p><p>📞 ${e.telefon||'-'}</p><p>🏢 ${e.abteilung||'-'}</p><p>🆔 ${e.elbaid||'-'}</p><button class="btn-primary btn-sm" onclick="editEmployee('${e.id}')" style="margin-top:10px">Bearbeiten</button></div>`).join('')}
-function openModal(){editingId=null;document.getElementById('modalTitle').textContent='Neuer Mitarbeiter';document.getElementById('f-vorname').value='';document.getElementById('f-nachname').value='';document.getElementById('f-status').value='Aktiv';document.getElementById('f-abteilung').value='Gleissicherung';document.getElementById('f-telefon').value='';document.getElementById('f-email').value='';document.getElementById('f-elbaid').value='';document.getElementById('modal').classList.add('active')}
+grid.innerHTML=data.map(e=>`<div class="card"><h3>${e.vorname} ${e.nachname}</h3><p><span class="badge badge-${(e.status||'aktiv').toLowerCase()}">${e.status||'Aktiv'}</span></p><p>📧 ${e.email||'-'}</p><p>📞 ${e.telefon||'-'}</p><p>🏢 ${e.abteilung||'-'}</p><p>🆔 ${e.elbaid||'-'}</p><button class="btn-primary btn-sm" onclick="editEmployee('${e.id}')" style="margin-top:10px">Bearbeiten</button></div>`).join('');
+const sel1=document.getElementById('h-mitarbeiter');
+const sel2=document.getElementById('q-mitarbeiter');
+const sel3=document.getElementById('d-mitarbeiter');
+sel1.innerHTML=data.map(e=>`<option value="${e.id}">${e.vorname} ${e.nachname}</option>`).join('');
+sel2.innerHTML=data.map(e=>`<option value="${e.id}">${e.vorname} ${e.nachname}</option>`).join('');
+sel3.innerHTML='<option value="">Allgemein</option>'+data.map(e=>`<option value="${e.id}">${e.vorname} ${e.nachname}</option>`).join('');
+const checkList=document.getElementById('b-mitarbeiter-list');
+checkList.innerHTML=data.map(e=>`<label class="checkbox-label"><input type="checkbox" value="${e.id}"> ${e.vorname} ${e.nachname}</label>`).join('')}
+function openModal(){editingId=null;document.getElementById('modalTitle').textContent='Neuer Mitarbeiter';['f-vorname','f-nachname','f-telefon','f-email','f-elbaid'].forEach(id=>document.getElementById(id).value='');document.getElementById('f-status').value='Aktiv';document.getElementById('f-abteilung').value='Gleissicherung';document.getElementById('modal').classList.add('active')}
 function closeModal(){document.getElementById('modal').classList.remove('active')}
-async function editEmployee(id){
-editingId=id;
-const{data}=await supabase.from('employees').select('*').eq('id',id).single();
-if(!data)return;
-document.getElementById('modalTitle').textContent='Mitarbeiter bearbeiten';
-document.getElementById('f-vorname').value=data.vorname||'';
-document.getElementById('f-nachname').value=data.nachname||'';
-document.getElementById('f-status').value=data.status||'Aktiv';
-document.getElementById('f-abteilung').value=data.abteilung||'Gleissicherung';
-document.getElementById('f-telefon').value=data.telefon||'';
-document.getElementById('f-email').value=data.email||'';
-document.getElementById('f-elbaid').value=data.elbaid||'';
-document.getElementById('modal').classList.add('active')}
-async function saveEmployee(){
-const data={vorname:document.getElementById('f-vorname').value,nachname:document.getElementById('f-nachname').value,status:document.getElementById('f-status').value,abteilung:document.getElementById('f-abteilung').value,telefon:document.getElementById('f-telefon').value,email:document.getElementById('f-email').value,elbaid:document.getElementById('f-elbaid').value,user_id:currentUser.id};
-if(!data.vorname||!data.nachname){alert('Bitte Vorname und Nachname ausfüllen');return}
-if(editingId){await supabase.from('employees').update(data).eq('id',editingId)}else{await supabase.from('employees').insert([data])}
-closeModal();loadEmployees()}
+async function editEmployee(id){editingId=id;const{data}=await supabase.from('employees').select('*').eq('id',id).single();if(!data)return;document.getElementById('modalTitle').textContent='Mitarbeiter bearbeiten';document.getElementById('f-vorname').value=data.vorname||'';document.getElementById('f-nachname').value=data.nachname||'';document.getElementById('f-status').value=data.status||'Aktiv';document.getElementById('f-abteilung').value=data.abteilung||'Gleissicherung';document.getElementById('f-telefon').value=data.telefon||'';document.getElementById('f-email').value=data.email||'';document.getElementById('f-elbaid').value=data.elbaid||'';document.getElementById('modal').classList.add('active')}
+async function saveEmployee(){const data={vorname:document.getElementById('f-vorname').value,nachname:document.getElementById('f-nachname').value,status:document.getElementById('f-status').value,abteilung:document.getElementById('f-abteilung').value,telefon:document.getElementById('f-telefon').value,email:document.getElementById('f-email').value,elbaid:document.getElementById('f-elbaid').value,user_id:currentUser.id};if(!data.vorname||!data.nachname){alert('Bitte Vorname und Nachname ausfüllen');return}if(editingId){await supabase.from('employees').update(data).eq('id',editingId)}else{await supabase.from('employees').insert([data])}closeModal();loadEmployees()}
+// Hours Functions
+async function loadHours(){const{data:hours}=await supabase.from('hours').select('*,employees(vorname,nachname)').eq('user_id',currentUser.id).order('datum',{ascending:false});const tbody=document.getElementById('hoursTableBody');if(!hours||hours.length===0){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#999">Noch keine Stunden eingetragen</td></tr>';return}tbody.innerHTML=hours.map(h=>`<tr><td>${h.employees?.vorname} ${h.employees?.nachname}</td><td>${h.datum}</td><td>${h.stunden}h</td><td><button class="btn-sm" onclick="deleteHour('${h.id}')">Löschen</button></td></tr>`).join('')}
+async function addHourEntry(){const data={mitarbeiter_id:document.getElementById('h-mitarbeiter').value,datum:document.getElementById('h-datum').value,stunden:parseFloat(document.getElementById('h-stunden').value),user_id:currentUser.id};if(!data.mitarbeiter_id||!data.datum||!data.stunden){alert('Bitte alle Felder ausfüllen');return}await supabase.from('hours').insert([data]);document.getElementById('h-datum').value='';document.getElementById('h-stunden').value='';loadHours()}
+async function deleteHour(id){if(!confirm('Wirklich löschen?'))return;await supabase.from('hours').delete().eq('id',id);loadHours()}
+// Qualifikationen
+async function loadQualifikationen(){const{data}=await supabase.from('qualifikationen').select('*,employees(vorname,nachname)').eq('user_id',currentUser.id);const grid=document.getElementById('qualGrid');if(!data||data.length===0){grid.innerHTML='<div class="empty">Noch keine Qualifikationen angelegt</div>';return}const today=new Date();grid.innerHTML=data.map(q=>{const ablauf=q.ablaufdatum?new Date(q.ablaufdatum):null;const fit=q.fit_schulung?new Date(q.fit_schulung):null;const ablaufWarning=ablauf&&(ablauf-today)/(1000*60*60*24)<30;const fitWarning=fit&&(fit-today)/(1000*60*60*24)<30;const quals=[];if(q.sakra)quals.push('SAKRA');if(q.sipo)quals.push('SIPO');if(q.beb)quals.push('BeB');if(q.sas)quals.push('SaS');if(q.buep)quals.push('BÜP');if(q.hib)quals.push('HIB');if(q.bediener)quals.push('Bediener');if(q.monteur)quals.push('Monteur');return`<div class="card"><h3>${q.employees?.vorname} ${q.employees?.nachname}</h3><p><strong>Qualifikationen:</strong> ${quals.join(', ')}</p>${q.ablaufdatum?`<p class="${ablaufWarning?'badge badge-warning':''}">Ablauf: ${q.ablaufdatum}</p>`:''} ${q.fit_schulung?`<p class="${fitWarning?'badge badge-danger':''}">FIT: ${q.fit_schulung}</p>`:''}</div>`}).join('')}
+function openQualModal(){['q-sakra','q-sipo','q-beb','q-sas','q-buep','q-hib','q-bediener','q-monteur'].forEach(id=>document.getElementById(id).checked=false);['q-ablauf','q-fit'].forEach(id=>document.getElementById(id).value='');document.getElementById('qualModal').classList.add('active')}
+function closeQualModal(){document.getElementById('qualModal').classList.remove('active')}
+async function saveQualifikation(){const data={mitarbeiter_id:document.getElementById('q-mitarbeiter').value,sakra:document.getElementById('q-sakra').checked,sipo:document.getElementById('q-sipo').checked,beb:document.getElementById('q-beb').checked,sas:document.getElementById('q-sas').checked,buep:document.getElementById('q-buep').checked,hib:document.getElementById('q-hib').checked,bediener:document.getElementById('q-bediener').checked,monteur:document.getElementById('q-monteur').checked,ablaufdatum:document.getElementById('q-ablauf').value||null,fit_schulung:document.getElementById('q-fit').value||null,user_id:currentUser.id};await supabase.from('qualifikationen').insert([data]);closeQualModal();loadQualifikationen()}
+// Baustellen
+async function loadBaustellen(){const{data}=await supabase.from('baustellen').select('*').eq('user_id',currentUser.id);const grid=document.getElementById('baustellenGrid');if(!data||data.length===0){grid.innerHTML='<div class="empty">Noch keine Baustellen angelegt</div>';return}grid.innerHTML=data.map(b=>`<div class="card"><h3>${b.name}</h3><p>📍 ${b.ort||'-'}</p><p>📅 ${b.start_datum} - ${b.end_datum}</p><p>${b.notizen||''}</p></div>`).join('')}
+function openBaustelleModal(){['b-name','b-ort','b-start','b-ende','b-notizen'].forEach(id=>document.getElementById(id).value='');document.getElementById('baustelleModal').classList.add('active')}
+function closeBaustelleModal(){document.getElementById('baustelleModal').classList.remove('active')}
+async function saveBaustelle(){const checks=document.querySelectorAll('#b-mitarbeiter-list input:checked');const mitarbeiter=Array.from(checks).map(c=>c.value);const data={name:document.getElementById('b-name').value,ort:document.getElementById('b-ort').value,start_datum:document.getElementById('b-start').value,end_datum:document.getElementById('b-ende').value,mitarbeiter:mitarbeiter,notizen:document.getElementById('b-notizen').value,user_id:currentUser.id};if(!data.name){alert('Bitte Name eingeben');return}await supabase.from('baustellen').insert([data]);closeBaustelleModal();loadBaustellen()}
+// Dokumente
+async function loadDokumente(){const{data}=await supabase.from('dokumente').select('*,employees(vorname,nachname)').eq('user_id',currentUser.id);const grid=document.getElementById('dokumenteGrid');if(!data||data.length===0){grid.innerHTML='<div class="empty">Noch keine Dokumente angelegt</div>';return}const today=new Date();grid.innerHTML=data.map(d=>{const gueltig=d.gueltig_bis?new Date(d.gueltig_bis):null;const warning=gueltig&&(gueltig-today)/(1000*60*60*24)<30;return`<div class="card"><h3>${d.name}</h3><p>📄 ${d.typ}</p><p>👤 ${d.employees?d.employees.vorname+' '+d.employees.nachname:'Allgemein'}</p>${d.gueltig_bis?`<p class="${warning?'badge badge-warning':''}">Gültig bis: ${d.gueltig_bis}</p>`:''}<p><a href="${d.url}" target="_blank">🔗 Link</a></p></div>`}).join('')}
+function openDokumentModal(){['d-name','d-url','d-gueltig'].forEach(id=>document.getElementById(id).value='');document.getElementById('d-mitarbeiter').value='';document.getElementById('d-typ').value='Zertifikat';document.getElementById('dokumentModal').classList.add('active')}
+function closeDokumentModal(){document.getElementById('dokumentModal').classList.remove('active')}
+async function saveDokument(){const data={name:document.getElementById('d-name').value,mitarbeiter_id:document.getElementById('d-mitarbeiter').value||null,typ:document.getElementById('d-typ').value,url:document.getElementById('d-url').value,gueltig_bis:document.getElementById('d-gueltig').value||null,user_id:currentUser.id};if(!data.name){alert('Bitte Name eingeben');return}await supabase.from('dokumente').insert([data]);closeDokumentModal();loadDokumente()}
+// View Switcher
 function showView(view){
 document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
 document.getElementById('view-'+view).classList.add('active');
 document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
 event.target.classList.add('active');
-const titles={'liste':'Alle Mitarbeiter','stunden':'Stundenbuch'};
+const titles={'liste':'Alle Mitarbeiter','stunden':'Stundenbuch','qualifikationen':'Qualifikationen','baustellen':'Baustellen','dokumente':'Dokumente'};
 document.getElementById('viewTitle').textContent=titles[view]||'Mitarbeiterverwaltung';
-if(view==='stunden')loadHours()}
-async function loadHours(){
-const{data:employees}=await supabase.from('employees').select('id,vorname,nachname').eq('user_id',currentUser.id);
-const sel=document.getElementById('h-mitarbeiter');
-sel.innerHTML=employees?.map(e=>`<option value="${e.id}">${e.vorname} ${e.nachname}</option>`).join('')||'';
-const{data:hours}=await supabase.from('hours').select('*,employees(vorname,nachname)').eq('user_id',currentUser.id).order('datum',{ascending:false});
-const tbody=document.getElementById('hoursTableBody');
-if(!hours||hours.length===0){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#999">Noch keine Stunden eingetragen</td></tr>';return}
-tbody.innerHTML=hours.map(h=>`<tr><td>${h.employees?.vorname} ${h.employees?.nachname}</td><td>${h.datum}</td><td>${h.stunden}h</td><td><button class="btn-sm" onclick="deleteHour('${h.id}')">Löschen</button></td></tr>`).join('')}
-async function addHourEntry(){
-const data={mitarbeiter_id:document.getElementById('h-mitarbeiter').value,datum:document.getElementById('h-datum').value,stunden:parseFloat(document.getElementById('h-stunden').value),user_id:currentUser.id};
-if(!data.mitarbeiter_id||!data.datum||!data.stunden){alert('Bitte alle Felder ausfüllen');return}
-await supabase.from('hours').insert([data]);
-document.getElementById('h-datum').value='';document.getElementById('h-stunden').value='';loadHours()}
-async function deleteHour(id){if(!confirm('Wirklich löschen?'))return;await supabase.from('hours').delete().eq('id',id);loadHours()}
+if(view==='stunden')loadHours();
+if(view==='qualifikationen')loadQualifikationen();
+if(view==='baustellen')loadBaustellen();
+if(view==='dokumente')loadDokumente()}
+// Excel Export
+async function exportToExcel(){
+const{data:employees}=await supabase.from('employees').select('*').eq('user_id',currentUser.id);
+const{data:hours}=await supabase.from('hours').select('*,employees(vorname,nachname)').eq('user_id',currentUser.id);
+const{data:quals}=await supabase.from('qualifikationen').select('*,employees(vorname,nachname)').eq('user_id',currentUser.id);
+const empData=employees?.map(e=>({Vorname:e.vorname,Nachname:e.nachname,Status:e.status,Abteilung:e.abteilung,Telefon:e.telefon,Email:e.email,'ELBA ID':e.elbaid}));
+const hourData=hours?.map(h=>({Mitarbeiter:`${h.employees?.vorname} ${h.employees?.nachname}`,Datum:h.datum,Stunden:h.stunden}));
+const qualData=quals?.map(q=>{const qu=[];if(q.sakra)qu.push('SAKRA');if(q.sipo)qu.push('SIPO');if(q.beb)qu.push('BeB');if(q.sas)qu.push('SaS');if(q.buep)qu.push('BÜP');if(q.hib)qu.push('HIB');if(q.bediener)qu.push('Bediener');if(q.monteur)qu.push('Monteur');return{Mitarbeiter:`${q.employees?.vorname} ${q.employees?.nachname}`,Qualifikationen:qu.join(', '),Ablauf:q.ablaufdatum||'',FIT:q.fit_schulung||''}});
+const wb=XLSX.utils.book_new();
+const ws1=XLSX.utils.json_to_sheet(empData||[]);
+const ws2=XLSX.utils.json_to_sheet(hourData||[]);
+const ws3=XLSX.utils.json_to_sheet(qualData||[]);
+XLSX.utils.book_append_sheet(wb,ws1,'Mitarbeiter');
+XLSX.utils.book_append_sheet(wb,ws2,'Stunden');
+XLSX.utils.book_append_sheet(wb,ws3,'Qualifikationen');
+XLSX.writeFile(wb,'mitarbeiterverwaltung.xlsx')}
 init();
 </script>
 </body>
